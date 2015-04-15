@@ -1944,7 +1944,10 @@ class EMRJobRunner(MRJobRunner):
             lg_step_nums = step_nums
         log.info('Scanning S3 logs for probable cause of failure')
         self._wait_for_s3_eventual_consistency()
-        self._wait_for_job_flow_termination()
+
+        if not self._opts['emr_job_flow_id']:
+            # don't wait for termination if we were passed an existing cluster
+            self._wait_for_job_flow_termination()
 
         task_attempt_logs = self.ls_task_attempt_logs_s3(step_nums)
         step_logs = self.ls_step_logs_s3(step_nums)
