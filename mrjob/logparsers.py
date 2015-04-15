@@ -41,6 +41,17 @@ TASK_ATTEMPTS_LOG_URI_RE = re.compile(
     r'(?P<attempt_num>\d+)/'        # 3/
     r'(?P<stream>stderr|syslog)$')  # stderr
 
+
+u's3://tuba-bbsoccer/mrjob/t2/j-2XPT1SUK7GXYQ/task-attempts/application_1429118630778_0001/container_1429118630778_0001_01_000001/stdout.gz'
+EMR_TASK_ATTEMPTS_LOG_URI_RE = re.compile(
+    r'^.*/container_'                 # container_
+    r'(?P<app_name>\d+)_'          # 1429118630778_
+    r'(?P<app_num>\d+)_'           # 0001_
+    r'(?P<attempt_num>\d+)_'        # 01_
+    r'(?P<container_num>\d+)/'        # 000001/
+    r'(?P<stream>stderr\.gz|syslog\.gz)$')  # stderr.gz
+
+
 # regex for matching step log URIs
 STEP_LOG_URI_RE = re.compile(
     r'^.*/(?P<step_num>\d+)/(?P<stream>syslog|stderr)$')
@@ -90,12 +101,14 @@ def _filter_sort(logs, exprs, sort_key_func):
 def _sorted_task_attempts(logs):
     return _filter_sort(
         logs,
-        [TASK_ATTEMPTS_LOG_URI_RE],
+        [EMR_TASK_ATTEMPTS_LOG_URI_RE],
         lambda info: (
-            info['step_num'], info['node_type'],
+            info['app_name'],
+            info['app_num'],
             info['attempt_num'],
-            info['stream'] == 'stderr',
-            info['node_num']))
+            info['container_num'],
+            info['stream'] == 'stderr.gz',
+            ))
 
 
 def _sorted_steps(logs):
@@ -154,7 +167,7 @@ def _parse_task_attempts(fs, logs):
 
         # Python tracebacks should win in a single file, but Java tracebacks
         # should win for later attempts
-        if path.endswith('stderr'):
+        if path.endswith('stderr') or path.endswith('stderr.gz'):
             lines = (_parsed_error(fs, path, find_python_traceback) or
                      _parsed_error(fs, path, find_hadoop_java_stack_trace))
         else:

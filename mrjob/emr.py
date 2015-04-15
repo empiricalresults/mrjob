@@ -95,6 +95,7 @@ from mrjob.logparsers import EMR_JOB_LOG_URI_RE
 from mrjob.logparsers import NODE_LOG_URI_RE
 from mrjob.logparsers import STEP_LOG_URI_RE
 from mrjob.logparsers import TASK_ATTEMPTS_LOG_URI_RE
+from mrjob.logparsers import EMR_TASK_ATTEMPTS_LOG_URI_RE
 from mrjob.logparsers import best_error_from_logs
 from mrjob.logparsers import scan_for_counters_in_files
 from mrjob.parse import HADOOP_STREAMING_JAR_RE
@@ -1786,7 +1787,7 @@ class EMRJobRunner(MRJobRunner):
 
     def ls_task_attempt_logs_s3(self, step_nums):
         return self._enforce_path_regexp(self._ls_s3_logs('task-attempts/'),
-                                         TASK_ATTEMPTS_LOG_URI_RE,
+                                         EMR_TASK_ATTEMPTS_LOG_URI_RE,
                                          step_nums)
 
     def ls_step_logs_s3(self, step_nums):
