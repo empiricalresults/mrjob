@@ -1983,7 +1983,7 @@ class EMRJobRunner(MRJobRunner):
                 time.sleep(15.0)
 
         log.info('Looking for application id for step {}'.format(step_id))
-        syslog = filter(lambda x: x == "syslog.gz", step_logs)[0]
+        syslog = filter(lambda x: x.endswith("syslog.gz"), step_logs)[0]
         # grep the application name
         app_name = None
         for line in self.cat(syslog):
