@@ -1966,20 +1966,23 @@ class EMRJobRunner(MRJobRunner):
     def _find_probable_cause_of_failure_s3_v2(self, step_id):
         log.info('Scanning S3 logs for probable cause of failure')
 
-        wait_until = datetime.now() + timedelta(minutes=5)
+        wait_until = datetime.now() + timedelta(minutes=10)
 
         # we need to wait for this log
         step_logs = []
+        log.info('Waiting for step {} logs to settle'.format(step_id))
         while True:
             step_logs = [p for p in self._ls_s3_logs('steps/')]
             step_logs = filter(lambda x: step_id in x, step_logs)
             if len(step_logs) == 4:
                 log.info("Found the step logs we wanted!")
+                break
             if datetime.now() > wait_until:
                 raise Exception("Timed out, steps directory doesnt exist?")
             else:
-                time.sleep(5.0)
+                time.sleep(15.0)
 
+        log.info('Looking for application id for step {}'.format(step_id))
         syslog = filter(lambda x: x == "syslog.gz", step_logs)[0]
         # grep the application name
         app_name = None
