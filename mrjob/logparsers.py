@@ -185,6 +185,31 @@ def _parse_task_attempts(fs, logs):
             }
 
 
+def parse_task_attempts_v2(fs, logs):
+    for path in logs:
+
+        # Python tracebacks should win in a single file, but Java tracebacks
+        # should win for later attempts
+        if path.endswith('stderr.gz'):
+            lines = (_parsed_error(fs, path, find_python_traceback) or
+                     _parsed_error(fs, path, find_hadoop_java_stack_trace))
+        else:
+            lines = _parsed_error(fs, path, find_hadoop_java_stack_trace)
+
+        if lines:
+            # if info.get('node_type', None) == 'm':
+            #     #input_uri = _scan_for_input_uri(path, fs)
+            #     pass
+            # else:
+            #     input_uri = None
+            input_uri = None
+            return {
+                'lines': lines,
+                'log_file_uri': path,
+                'input_uri': input_uri,
+            }
+
+
 def _scan_for_input_uri(log_file_uri, runner):
     """Scan the syslog file corresponding to log_file_uri for
     information about the input file.

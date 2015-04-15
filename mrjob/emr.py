@@ -98,6 +98,7 @@ from mrjob.logparsers import TASK_ATTEMPTS_LOG_URI_RE
 from mrjob.logparsers import EMR_TASK_ATTEMPTS_LOG_URI_RE
 from mrjob.logparsers import best_error_from_logs
 from mrjob.logparsers import scan_for_counters_in_files
+from mrjob.logparsers import parse_task_attempts_v2
 from mrjob.parse import HADOOP_STREAMING_JAR_RE
 from mrjob.parse import is_s3_uri
 from mrjob.parse import is_uri
@@ -1988,12 +1989,20 @@ class EMRJobRunner(MRJobRunner):
         app_name = None
         for line in self.cat(syslog):
             if ": Submitted application" in line:
-                app_name = line.split(" ")[-1]
+                app_name = line.strip().split(" ")[-1]
                 log.info("App name for this run is: {}".format(app_name))
                 break
 
         if not app_name:
             raise Exception("Could not parse app name from the syslog, something isn't right")
+
+        log.info('Waiting for task-attempt logs to settle')
+        time.sleep(30.0)
+
+        # not sure how we wait till everything is here as we dont know how many there are
+        app_logs = [p for p in self._ls_s3_logs('task-attempts/{}'.format(app_name))]
+        return parse_task_attempts_v2(self, app_logs)
+
 
 
     ### Bootstrapping ###
