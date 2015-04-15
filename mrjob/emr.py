@@ -1646,8 +1646,11 @@ class EMRJobRunner(MRJobRunner):
             if self._s3_job_log_uri:
                 log.info('Logs are in %s' % self._s3_job_log_uri)
             # look for a Python traceback
-            cause = self._find_probable_cause_of_failure(
-                step_nums, sorted(lg_step_num_mapping.values()))
+            # cause = self._find_probable_cause_of_failure(
+            #     step_nums, sorted(lg_step_num_mapping.values()))
+
+            eause = self._find_probable_cause_of_failure_s3_v2()
+
             if cause:
                 # log cause, and put it in exception
                 cause_msg = []  # lines to log and put in exception
@@ -1955,6 +1958,36 @@ class EMRJobRunner(MRJobRunner):
         job_logs = self.ls_job_logs_s3(lg_step_nums)
         return best_error_from_logs(self, task_attempt_logs, step_logs,
                                     job_logs)
+
+    def _find_probable_cause_of_failure_s3_v2(self):
+        log.info('Scanning S3 logs for probable cause of failure')
+
+        step_name = self.step_name
+        wait_until = datetime.now() + timedelta(minutes=5)
+
+        # we need to wait for this log
+        step_logs = []
+        while True:
+            step_logs = [p for p in self._ls_s3_logs('steps/')]
+            if len(step_logs) == 4:
+                log.info("Found the step logs we wanted!")
+            if datetime.now() > wait_until:
+                raise Exception("Timed out, steps directory doesnt exist?")
+            else:
+                time.sleep(5.0)
+
+        syslog = filter(lambda x: x == "syslog.gz", step_logs)[0]
+        # grep the application name
+        app_name = None
+        for line in self.cat(syslog):
+            if ": Submitted application" in line:
+                app_name = line.split(" ")[-1]
+                log.info("App name for this run is: {}".format(app_name))
+                break
+
+        if not app_name:
+            raise Exception("Could not parse app name from the syslog, something isn't right")
+
 
     ### Bootstrapping ###
 
