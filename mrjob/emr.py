@@ -1534,6 +1534,7 @@ class EMRJobRunner(MRJobRunner):
         Also grab log URI from the job status (since we may not know it)
         """
         success = False
+        step = None
 
         while True:
             # don't antagonize EMR's throttling
@@ -1649,23 +1650,26 @@ class EMRJobRunner(MRJobRunner):
             # cause = self._find_probable_cause_of_failure(
             #     step_nums, sorted(lg_step_num_mapping.values()))
 
-            eause = self._find_probable_cause_of_failure_s3_v2()
+            if step:
+                step_id = filter(lambda x: x.name == step.name, step.connection.list_steps(job_flow.jobflowid).steps)[0].id
 
-            if cause:
-                # log cause, and put it in exception
-                cause_msg = []  # lines to log and put in exception
-                cause_msg.append('Probable cause of failure (from %s):' %
-                                 cause['log_file_uri'])
-                cause_msg.extend(line.strip('\n') for line in cause['lines'])
-                if cause['input_uri']:
-                    cause_msg.append('(while reading from %s)' %
-                                     cause['input_uri'])
+                cause = self._find_probable_cause_of_failure_s3_v2(step_id)
 
-                for line in cause_msg:
-                    log.error(line)
+                if cause:
+                    # log cause, and put it in exception
+                    cause_msg = []  # lines to log and put in exception
+                    cause_msg.append('Probable cause of failure (from %s):' %
+                                     cause['log_file_uri'])
+                    cause_msg.extend(line.strip('\n') for line in cause['lines'])
+                    if cause['input_uri']:
+                        cause_msg.append('(while reading from %s)' %
+                                         cause['input_uri'])
 
-                # add cause_msg to exception message
-                msg += '\n' + '\n'.join(cause_msg) + '\n'
+                    for line in cause_msg:
+                        log.error(line)
+
+                    # add cause_msg to exception message
+                    msg += '\n' + '\n'.join(cause_msg) + '\n'
 
             raise Exception(msg)
 
@@ -1959,16 +1963,16 @@ class EMRJobRunner(MRJobRunner):
         return best_error_from_logs(self, task_attempt_logs, step_logs,
                                     job_logs)
 
-    def _find_probable_cause_of_failure_s3_v2(self):
+    def _find_probable_cause_of_failure_s3_v2(self, step_id):
         log.info('Scanning S3 logs for probable cause of failure')
 
-        step_name = self.step_name
         wait_until = datetime.now() + timedelta(minutes=5)
 
         # we need to wait for this log
         step_logs = []
         while True:
             step_logs = [p for p in self._ls_s3_logs('steps/')]
+            step_logs = filter(lambda x: step_id in x, step_logs)
             if len(step_logs) == 4:
                 log.info("Found the step logs we wanted!")
             if datetime.now() > wait_until:
