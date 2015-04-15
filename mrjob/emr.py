@@ -1131,15 +1131,19 @@ class EMRJobRunner(MRJobRunner):
 
         if not self._ran_job:
             try:
-                log.info("Attempting to terminate job...")
-                had_job = ssh_terminate_single_job(
-                    self._opts['ssh_bin'],
-                    addr,
-                    self._opts['ec2_key_pair_file'])
-                if had_job:
-                    log.info("Succeeded in terminating job")
+                keypair = self._opts.get('ec2_key_pair_file')
+                if keypair:
+                    log.info("Attempting to terminate job...")
+                    had_job = ssh_terminate_single_job(
+                        self._opts['ssh_bin'],
+                        addr,
+                        keypair)
+                    if had_job:
+                        log.info("Succeeded in terminating job")
+                    else:
+                        log.info("Job appears to have already been terminated")
                 else:
-                    log.info("Job appears to have already been terminated")
+                    log.info("No keypair associated with this run, cannot check job status")
             except IOError:
                 log.info(error_msg)
 
