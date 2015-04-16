@@ -1997,10 +1997,19 @@ class EMRJobRunner(MRJobRunner):
             raise Exception("Could not parse app name from the syslog, something isn't right")
 
         log.info('Waiting for task-attempt logs to settle')
-        time.sleep(30.0)
 
+        wait_until = datetime.now() + timedelta(minutes=10)
         # not sure how we wait till everything is here as we dont know how many there are
-        app_logs = [p for p in self._ls_s3_logs('task-attempts/{}'.format(app_name))]
+        app_logs = []
+        while len(app_logs) < 2:
+            app_logs = [p for p in self._ls_s3_logs('task-attempts/{}/'.format(app_name))]
+            if datetime.now() > wait_until:
+                raise Exception("Timed out, steps directory doesnt exist?")
+            else:
+                time.sleep(30.0)
+
+        log.info("Found {} task-attempt logs we'll check for errors".format(len(app_logs)))
+
         return parse_task_attempts_v2(self, app_logs)
 
 
